@@ -134,6 +134,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 */
 		mMap.animateCamera(mUpdate);
 
+		try {
+			Thread.sleep(400);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+
+
 		//stop location updates
 		if (mGoogleApiClient != null) {
 			LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);

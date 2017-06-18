@@ -8,6 +8,8 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -25,12 +27,18 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.HashMap;
+import java.util.List;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
 		GoogleApiClient.ConnectionCallbacks,
 		GoogleApiClient.OnConnectionFailedListener,
 		LocationListener {
 
 	private GoogleMap mMap;
+	double latitude;
+	double longitude;
+	private int PROXIMITY_RADIUS = 5000;
 	GoogleApiClient mGoogleApiClient;
 	Location mLastLocation;
 	Marker mCurrLocationMarker;
@@ -63,7 +71,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onMapReady(GoogleMap googleMap) {
 		mMap = googleMap;
-		mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+		mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 		mMap.getUiSettings().setTiltGesturesEnabled(false);
 
 		//Initialize Google Play Services
@@ -78,6 +86,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			buildGoogleApiClient();
 			mMap.setMyLocationEnabled(true);
 		}
+
+	}
+
+
+	public void carregaDentista() {
+		String url = getUrl(latitude, longitude, "dentist");
+		Object[] DataTransfer = new Object[2];
+		DataTransfer[0] = mMap;
+		DataTransfer[1] = url;
+		GetNearbyPlacesData getNearbyPlacesData = new GetNearbyPlacesData();
+		getNearbyPlacesData.execute(DataTransfer);
+		Log.d("URL", url);
 	}
 
 	protected synchronized void buildGoogleApiClient() {
@@ -93,8 +113,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	public void onConnected(Bundle bundle) {
 
 		mLocationRequest = new LocationRequest();
-		mLocationRequest.setInterval(1000);
-		mLocationRequest.setFastestInterval(1000);
+		mLocationRequest.setInterval(3600000);
+		mLocationRequest.setFastestInterval(60000);
 		mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 		if (ContextCompat.checkSelfPermission(this,
 				Manifest.permission.ACCESS_FINE_LOCATION)
@@ -102,8 +122,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
 		}
 
-		Toast.makeText(MapsActivity.this, "Conectado com sucesso", Toast.LENGTH_LONG).show();
+		Toast.makeText(MapsActivity.this, "Conectado com sucesso, carregando...", Toast.LENGTH_LONG).show();
 
+	}
+
+	private String getUrl(double latitude, double longitude, String nearbyPlace) {
+
+		StringBuilder googlePlacesUrl = new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?");
+		googlePlacesUrl.append("location=" + latitude + "," + longitude);
+		googlePlacesUrl.append("&radius=" + PROXIMITY_RADIUS);
+		googlePlacesUrl.append("&type=" + nearbyPlace);
+		googlePlacesUrl.append("&sensor=true");
+		googlePlacesUrl.append("&key=" + "AIzaSyDOa3cNh_7o15n_mbq3FCvAgDxFIj4W9LU");
+		Log.d("getUrl", googlePlacesUrl.toString());
+		return (googlePlacesUrl.toString());
 	}
 
 	@Override
@@ -117,9 +149,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mLastLocation = location;
 		if (mCurrLocationMarker != null) {
 			mCurrLocationMarker.remove();
+			Log.d("VERIFICAÇÃO", "Current = last");
 		}
 
 		//Place current location marker
+		latitude = location.getLatitude();
+		longitude = location.getLongitude();
+		Log.d("latitude",  String.valueOf(latitude));
+		Log.d("longitude", String.valueOf(longitude));
 		LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 		MarkerOptions markerOptions = new MarkerOptions();
 		markerOptions.position(latLng);
@@ -129,18 +166,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 		//move map camera
 		CameraUpdate mUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15); //latlng and zomm simultaneously
-/*
-		mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-*/
+
 		mMap.animateCamera(mUpdate);
+		Toast.makeText(MapsActivity.this, "Conectado com sucesso, carregando...", Toast.LENGTH_LONG).show();
+
+		/*
+		mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
 
 		try {
-			Thread.sleep(400);
+			Thread.sleep(500);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
-		}
+		}*/
 
-
+		//chama nearby
+		carregaDentista();
 
 		//stop location updates
 		if (mGoogleApiClient != null) {
@@ -148,6 +188,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 
 	}
+
 
 	@Override
 	public void onConnectionFailed(ConnectionResult connectionResult) {
